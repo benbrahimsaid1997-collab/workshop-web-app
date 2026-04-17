@@ -8,11 +8,16 @@ import requests as req_lib
 import os
 import json
 from datetime import datetime
+import threading
+import time
 
 app = Flask(__name__)
 
-NGROK_URL = os.environ.get('NGROK_URL', 'https://curling-underwear-bubble.ngrok-free.dev')
-API_BASE  = os.environ.get('API_BASE',  f'{NGROK_URL}/api')
+# عنوان الـ API — سيُحدَّث عند الحصول على رابط ngrok الجديد (port 5001)
+API_BASE = os.environ.get('API_BASE', 'http://localhost:5001/api')
+
+# قاموس لتخزين الإشعارات المؤقتة (في الإنتاج، استخدم قاعدة بيانات)
+notifications = []
 
 # ─── بيانات تجريبية (تُستخدم إذا كان الـ API غير متاح) ───────────────────────
 DEMO_GARAGES = [
@@ -59,16 +64,84 @@ def _demo_booking():
     time    = data.get('time', '')
     if not all([name, phone, service, date, time]):
         return jsonify({"error": "جميع الحقول مطلوبة"}), 400
+    
+    # حساب الوقت المتوقع بناءً على عدد الحجوزات
     waiting_number = len(_bookings) + 1
     people_ahead   = len([b for b in _bookings if b.get('date') == date])
+    estimated_minutes = people_ahead * 30
+    estimated_time = f"{estimated_minutes} دقيقة" if estimated_minutes < 60 else f"{(estimated_minutes // 60)} ساعة و {estimated_minutes % 60} دقيقة"
+    
     _bookings.append({"customerName": name, "customerPhone": phone,
                       "service": service, "date": date, "time": time})
+    
+    # إضافة إشعار تأكيد
+    notifications.append({
+        "phone": phone,
+        "message": f"✅ تم تأكيد حجزك! رقم انتظارك: {waiting_number}",
+        "timestamp": datetime.now().isoformat(),
+        "read": False
+    })
+    
     return jsonify({
         "Message":       "تم تأكيد حجزك بنجاح! (بيانات تجريبية)",
         "WaitingNumber": waiting_number,
         "PeopleAhead":   people_ahead,
-        "EstimatedTime": f"{people_ahead * 30} دقيقة"
+        "EstimatedTime": estimated_time
     })
+
+
+# ─── دالة لحساب الوقت المتوقع من المرآب ─────────────────────────────────────
+def get_estimated_time_from_garage():
+    """جلب أقل وقت متوقع من المرائب"""
+    try:
+        response = req_lib.get(f"{API_BASE}/Garage/status", timeout=5)
+        if response.status_code == 200:
+            garages = response.json()
+            # البحث عن أقل وقت متوقع
+            min_time = min([g.get('estimatedMinutes', 30) for g in garages])
+            return min_time
+    except:
+        pass
+    return 30  # القيمة الافتراضية
+
+
+# ─── خدمة خلفية لإرسال الإشعارات التلقائية ─────────────────────────────────
+def notification_worker():
+    """تعمل في الخلفية وترسل إشعارات للمواعيد القريبة"""
+    while True:
+        try:
+            now = datetime.now()
+            today = now.strftime("%Y-%m-%d")
+            current_time = now.strftime("%H:%M")
+            
+            # جلب الحجوزات القادمة (خلال 30 دقيقة)
+            upcoming = []
+            for booking in _bookings:
+                if booking.get('date') == today and booking.get('time') > current_time:
+                    time_diff = (datetime.strptime(booking['time'], "%H:%M") - datetime.strptime(current_time, "%H:%M")).total_seconds() / 60
+                    if 0 <= time_diff <= 30:
+                        upcoming.append(booking)
+            
+            # إرسال إشعارات للمواعيد القريبة
+            for booking in upcoming:
+                phone = booking.get('customerPhone')
+                waiting_num = booking.get('waitingNumber', '?')
+                notifications.append({
+                    "phone": phone,
+                    "message": f"⏰ اقترب موعدك! دورك رقم {waiting_num} بعد حوالي 30 دقيقة. يرجى التوجه إلى الورشة.",
+                    "timestamp": datetime.now().isoformat(),
+                    "read": False
+                })
+            
+            # التحقق من الحجوزات التي اكتملت (يمكن ربطها بـ API لاحقاً)
+        except Exception as e:
+            print(f"خطأ في خدمة الإشعارات: {e}")
+        
+        time.sleep(60)  # التحقق كل دقيقة
+
+
+# تشغيل خدمة الإشعارات في الخلفية
+threading.Thread(target=notification_worker, daemon=True).start()
 
 
 # ─── Proxy ────────────────────────────────────────────────────────────────────
@@ -80,7 +153,6 @@ def proxy(path):
         fwd_headers = {k: v for k, v in request.headers if k.lower() != 'host'}
         fwd_headers['ngrok-skip-browser-warning'] = 'true'
         fwd_headers['User-Agent'] = 'WorkshopApp/1.0'
-        # merge any existing query params plus the ngrok bypass param
         params = dict(request.args)
         params['ngrok-skip-browser-warning'] = 'true'
         resp = req_lib.request(
@@ -92,25 +164,16 @@ def proxy(path):
             headers=fwd_headers,
             timeout=8
         )
-        # if the response is HTML (ngrok warning page or error page), fall back to demo
         content_type = resp.headers.get('Content-Type', '')
         if 'text/html' in content_type:
             raise req_lib.exceptions.ConnectionError('API returned HTML — falling back to demo data')
-
-        # rewrite localhost URLs in JSON responses to go through our /media proxy
-        # so images/videos load correctly (browser can't add headers to <img> tags)
-        body = resp.content
-        if 'application/json' in content_type:
-            body = body.replace(b'http://localhost:5001', b'/media')
-
         return Response(
-            body,
+            resp.content,
             status=resp.status_code,
-            content_type=content_type or 'application/json'
+            content_type=resp.headers.get('Content-Type', 'application/json')
         )
 
     except (req_lib.exceptions.ConnectionError, req_lib.exceptions.Timeout):
-        # الـ API غير متاح — استخدم البيانات التجريبية
         key = path.lower().rstrip('/')
         method = request.method.upper()
 
@@ -128,21 +191,29 @@ def proxy(path):
         return jsonify({"error": str(e)}), 500
 
 
-# ─── Media proxy (images / videos from the API server) ───────────────────────
-@app.route('/media/<path:path>')
-def media_proxy(path):
-    url = f"{NGROK_URL}/{path}"
-    try:
-        r = req_lib.get(
-            url,
-            headers={'ngrok-skip-browser-warning': 'true', 'User-Agent': 'WorkshopApp/1.0'},
-            timeout=10,
-            stream=True
-        )
-        ct = r.headers.get('Content-Type', 'application/octet-stream')
-        return Response(r.content, status=r.status_code, content_type=ct)
-    except Exception:
-        return '', 404
+# ─── واجهة الإشعارات ────────────────────────────────────────────────────────
+@app.route('/api/notifications/<phone>', methods=['GET'])
+def get_notifications(phone):
+    """جلب إشعارات زبون معين"""
+    user_notifications = [n for n in notifications if n['phone'] == phone]
+    return jsonify(user_notifications)
+
+
+@app.route('/api/notifications/<phone>/read', methods=['PUT'])
+def mark_notifications_read(phone):
+    """تحديد جميع إشعارات الزبون كمقروءة"""
+    global notifications
+    for n in notifications:
+        if n['phone'] == phone:
+            n['read'] = True
+    return jsonify({"message": "تم تحديث حالة الإشعارات"})
+
+
+@app.route('/api/estimated-time', methods=['GET'])
+def get_estimated_time():
+    """جلب الوقت المتوقع من المرآب"""
+    estimated_time = get_estimated_time_from_garage()
+    return jsonify({"estimatedMinutes": estimated_time})
 
 
 # ─── صفحات التطبيق ────────────────────────────────────────────────────────────
