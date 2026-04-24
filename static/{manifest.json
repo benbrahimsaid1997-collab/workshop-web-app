@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header">
+    <a href="/" class="back-btn">↩ رجوع</a>
+    <h1>🔔 إشعاراتي</h1>
+    <button onclick="markAllRead()" id="read-all-btn"
+        style="background:rgba(255,255,255,0.2);border:none;color:white;
+               padding:7px 13px;border-radius:20px;cursor:pointer;font-size:13px;white-space:nowrap">
+        ✔ قراءة الكل
+    </button>
+</div>
+
+<div class="page-content">
+    <div id="phone-gate" class="card" style="text-align:center;padding:28px">
+        <div style="font-size:40px;margin-bottom:12px">📱</div>
+        <p style="color:#555;margin-bottom:16px;font-size:15px">أدخل رقم هاتفك لعرض إشعاراتك</p>
+        <input type="tel" id="phone-input" class="form-input" placeholder="05XXXXXXXX"
+               style="margin-bottom:14px">
+        <button class="btn btn-primary" onclick="loadForPhone()" style="margin-bottom:0">
+            عرض الإشعارات
+        </button>
+    </div>
+
+    <div id="notif-list" style="display:none"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentPhone = '';
+let _audioCtx = null;
+
+function playDing() {
+    try {
+        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = _audioCtx;
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type      = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.6, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
+    } catch {}
+}
+
+// فعّل AudioContext عند أول تفاعل (سياسة المتصفح تمنع الصوت قبل ذلك)
+document.addEventListener('click', () => {
+    if (_audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume();
+}, { once: true });
+
+window.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('workshopPhone');
+    if (saved) {
+        currentPhone = saved;
+        document.getElementById('phone-input').value = saved;
+        document.getElementById('phone-gate').style.display = 'none';
+        document.getElementById('notif-list').style.display = 'block';
+        loadNotifications();
+    }
+});
+
+function loadForPhone() {
+    const phone = document.getElementById('phone-input').value.trim();
+    if (!phone) { showToast('⚠️ أدخل رقم الهاتف', 'error'); return; }
+    currentPhone = phone;
+    localStorage.setItem('workshopPhone', phone);
+    document.getElementById('phone-gate').style.display = 'none';
+    document.getElementById('notif-list').style.display = 'block';
+    loadNotifications();
+}
+
+let _prevUnread = -1;
+
+async function loadNotifications() {
+    const el = document.getElementById('notif-list');
+    el.innerHTML = '<div class="state-box"><div class="icon">⏳</div>جاري التحميل...</div>';
+    try {
+        const res  = await fetch(`/notifications/${encodeURIComponent(currentPhone)}`);
+        const data = await res.json();
+
+        // شغّل صوت إذا وصلت إشعارات جديدة
+        const unreadNow = data.filter(n => !n.read).length;
+        if (_prevUnread >= 0 && unreadNow > _prevUnread) playDing();
+        _prevUnread = unreadNow;
+
+        if (!data.length) {
+            el.innerHTML = `<div class="state-box">
+                <div class="icon">🔔</div>
+                <p>لا توجد إشعارات بعد</p>
+                <p style="font-size:13px;margin-top:8px;color:#bbb">ستظهر هنا عند اقتراب موعدك أو اكتمال الإصلاح</p>
+            </div>`;
+            return;
+        }
+
+        el.innerHTML = data.map(n => {
+            const icon    = n.type === 'approaching' ? '⏰' : n.type === 'completed' ? '✅' : '🔔';
+            const unread  = !n.read ? 'border-right:4px solid #0e8fdb;' : '';
+            const opacity = n.read ? 'opacity:0.65;' : '';
+            return `<div class="card" id="n-${n.id}"
+                         style="${unread}${opacity}cursor:pointer"
+                         onclick="markRead('${n.id}', this)">
+                <div style="display:flex;gap:12px;align-items:flex-start">
+                    <div style="font-size:26px">${icon}</div>
+                    <div style="flex:1">
+                        <div style="font-size:15px;color:#1a1a2e;line-height:1.6;margin-bottom:6px">
+                            ${n.message}
+                        </div>
+                        <div style="font-size:12px;color:#aaa">${n.timestamp}</div>
+                    </div>
+                    ${!n.read ? '<div style="width:10px;height:10px;background:#0e8fdb;border-radius:50%;flex-shrink:0;margin-top:5px"></div>' : ''}
+                </div>
+            </div>`;
+        }).join('');
+    } catch (err) {
+        el.innerHTML = `<div class="state-box"><div class="icon">❌</div>${err.message}</div>`;
+    }
+}
+
+async function markRead(nid, el) {
+    await fetch(`/notifications/read/${nid}`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({phone: currentPhone})
+    });
+    el.style.borderRight = '';
+    el.style.opacity = '0.65';
+    el.querySelector('[style*="background:#0e8fdb"]')?.remove();
+    updateBellCount();
+}
+
+async function markAllRead() {
+    if (!currentPhone) return;
+    await fetch('/notifications/read-all', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({phone: currentPhone})
+    });
+    showToast('✔ تم تحديد الكل كمقروء', 'success');
+    loadNotifications();
+    updateBellCount();
+}
+
+setInterval(loadNotifications, 30000);
+</script>
+{% endblock %}

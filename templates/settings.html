@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header">
+    <a href="/" class="back-btn">↩ رجوع</a>
+    <h1>⚙️ إعدادات الاتصال</h1>
+</div>
+
+<div class="page-content">
+
+    <!-- Current API URL -->
+    <div class="card">
+        <div style="font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:14px">🔗 عنوان API الحالي</div>
+        <div id="current-url" style="font-size:13px;color:#0e8fdb;word-break:break-all;
+             background:#f0f8ff;padding:10px 14px;border-radius:10px;margin-bottom:14px;
+             font-family:monospace;direction:ltr;text-align:left"></div>
+
+        <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">🌐 عنوان API الجديد</label>
+            <input type="url" id="api-input" class="form-input"
+                   placeholder="http://192.168.1.x:5001/api"
+                   style="direction:ltr;text-align:left">
+        </div>
+
+        <button class="btn btn-primary" onclick="saveUrl()" style="margin-bottom:10px">
+            💾 &nbsp; حفظ العنوان
+        </button>
+        <button class="btn btn-gray" onclick="resetUrl()" style="font-size:15px;padding:12px 20px;">
+            🔄 &nbsp; إعادة الضبط الافتراضي
+        </button>
+    </div>
+
+    <!-- Help card -->
+    <div class="card" style="background:#fffbea;border:1px solid #ffe066;">
+        <div style="font-size:15px;font-weight:700;color:#7a5c00;margin-bottom:10px">
+            📱 كيفية الاتصال من الهاتف
+        </div>
+        <div style="font-size:14px;color:#6b5000;line-height:1.9">
+            1. تأكد أن جهاز الكمبيوتر والهاتف على <strong>نفس شبكة WiFi</strong><br>
+            2. ابحث عن <strong>عنوان IP</strong> جهاز الكمبيوتر<br>
+            &nbsp;&nbsp;&nbsp;• Windows: <code style="background:#fff3cc;padding:1px 5px;border-radius:4px">ipconfig</code> في CMD<br>
+            &nbsp;&nbsp;&nbsp;• مثال: <code style="background:#fff3cc;padding:1px 5px;border-radius:4px">192.168.1.15</code><br>
+            3. اكتب في الحقل أعلاه:<br>
+            &nbsp;&nbsp;&nbsp;<code style="background:#fff3cc;padding:1px 5px;border-radius:4px">http://192.168.1.15:5002</code><br>
+            4. تأكد أن جدار الحماية يسمح بالمنفذ <strong>5002</strong>
+        </div>
+    </div>
+
+    <!-- Test connection -->
+    <div class="card">
+        <div style="font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:12px">
+            🧪 اختبار الاتصال
+        </div>
+        <button class="btn btn-teal" onclick="testConnection()" style="margin-bottom:10px">
+            🔌 &nbsp; اختبار الاتصال بالخادم
+        </button>
+        <div id="test-result" style="font-size:14px;line-height:1.7;min-height:20px"></div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function refresh() {
+        const url = getApiUrl();
+        document.getElementById('current-url').textContent = url;
+        document.getElementById('api-input').value = url;
+    }
+
+    function saveUrl() {
+        const val = document.getElementById('api-input').value.trim();
+        if (!val) { showToast('أدخل عنواناً صحيحاً', 'error'); return; }
+        // Remove trailing slash
+        const clean = val.replace(/\/+$/, '');
+        localStorage.setItem('workshop_api_url', clean);
+        refresh();
+        showToast('✅ تم حفظ العنوان', 'success');
+    }
+
+    function resetUrl() {
+        localStorage.removeItem('workshop_api_url');
+        refresh();
+        showToast('🔄 تم إعادة الضبط', 'success');
+    }
+
+    async function testConnection() {
+        const resultEl = document.getElementById('test-result');
+        resultEl.innerHTML = '<span style="color:#888">⏳ جاري الاتصال...</span>';
+        const start = Date.now();
+        try {
+            const res = await fetch(getApiUrl() + '/Garage/status', {
+                signal: AbortSignal.timeout(6000)
+            });
+            const ms = Date.now() - start;
+            if (res.ok) {
+                resultEl.innerHTML = `<span style="color:#1abf66">✅ الاتصال ناجح (${ms}ms)</span>`;
+            } else {
+                resultEl.innerHTML = `<span style="color:#e6a800">⚠️ الخادم استجاب بكود: ${res.status}</span>`;
+            }
+        } catch (err) {
+            resultEl.innerHTML = `<span style="color:#e6293e">❌ فشل الاتصال — تحقق من العنوان وأن الخادم يعمل</span>`;
+        }
+    }
+
+    refresh();
+</script>
+{% endblock %}

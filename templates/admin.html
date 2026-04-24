@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header">
+    <a href="/" class="back-btn">↩ رجوع</a>
+    <h1>🛠️ لوحة الموظف</h1>
+    <button onclick="loadBookings()"
+        style="background:rgba(255,255,255,0.2);border:none;color:white;
+               padding:7px 13px;border-radius:20px;cursor:pointer;font-size:14px;">🔄</button>
+</div>
+
+<div class="page-content">
+    <div id="stats" class="card" style="display:flex;gap:0;padding:0;overflow:hidden;margin-bottom:14px">
+        <div style="flex:1;text-align:center;padding:16px;border-left:1px solid #f0f0f5">
+            <div id="stat-total" style="font-size:26px;font-weight:800;color:#0e8fdb">-</div>
+            <div style="font-size:12px;color:#999;margin-top:3px">إجمالي</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:16px;border-left:1px solid #f0f0f5">
+            <div id="stat-pending" style="font-size:26px;font-weight:800;color:#e6a800">-</div>
+            <div style="font-size:12px;color:#999;margin-top:3px">قيد الانتظار</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:16px">
+            <div id="stat-done" style="font-size:26px;font-weight:800;color:#1abf66">-</div>
+            <div style="font-size:12px;color:#999;margin-top:3px">مكتمل</div>
+        </div>
+    </div>
+
+    <div id="booking-list"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadBookings() {
+    const el = document.getElementById('booking-list');
+    el.innerHTML = '<div class="state-box"><div class="icon">⏳</div>جاري التحميل...</div>';
+    try {
+        const res  = await fetch('/admin/bookings');
+        const data = await res.json();
+
+        document.getElementById('stat-total').textContent   = data.length;
+        document.getElementById('stat-pending').textContent = data.filter(b => b.status !== 'completed').length;
+        document.getElementById('stat-done').textContent    = data.filter(b => b.status === 'completed').length;
+
+        if (!data.length) {
+            el.innerHTML = `<div class="state-box"><div class="icon">📋</div>لا توجد حجوزات بعد</div>`;
+            return;
+        }
+
+        el.innerHTML = data.map(b => {
+            const done     = b.status === 'completed';
+            const badge    = done
+                ? '<span class="badge badge-success">✅ مكتمل</span>'
+                : '<span class="badge badge-warning">⏳ قيد الانتظار</span>';
+            const btn      = done ? '' :
+                `<button onclick="markComplete('${b.id}', this)"
+                    class="btn btn-success btn-sm"
+                    style="margin-top:12px;margin-bottom:0;width:100%">
+                    ✅ تأكيد اكتمال العمل
+                </button>`;
+            const est = b.min_wait > 0 ? `${b.min_wait} دقيقة` : 'متاح الآن';
+            return `<div class="card" id="booking-${b.id}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+                    <div>
+                        <div style="font-size:16px;font-weight:700;color:#1a1a2e">${b.customerName}</div>
+                        <div style="font-size:13px;color:#888;margin-top:2px">📱 ${b.customerPhone}</div>
+                    </div>
+                    ${badge}
+                </div>
+                <div style="font-size:13px;color:#555;line-height:2">
+                    🔧 <strong>${b.service}</strong><br>
+                    📅 ${b.date} &nbsp; ⏰ ${b.time}<br>
+                    🔢 رقم الانتظار: <strong>${b.waiting_number}</strong> &nbsp;
+                    ⏱️ وقت متوقع: <strong>${est}</strong>
+                </div>
+                ${btn}
+            </div>`;
+        }).reverse().join('');
+    } catch (err) {
+        el.innerHTML = `<div class="state-box"><div class="icon">❌</div>${err.message}</div>`;
+    }
+}
+
+async function markComplete(bid, btn) {
+    btn.textContent = '⏳ جاري...';
+    btn.disabled = true;
+    try {
+        const res = await fetch(`/admin/complete/${bid}`, {method:'POST'});
+        const d   = await res.json();
+        if (d.ok) {
+            showToast('✅ تم إرسال إشعار الاكتمال للزبون', 'success', 4000);
+            loadBookings();
+        } else {
+            showToast('❌ ' + (d.error || 'خطأ'), 'error');
+            btn.textContent = '✅ تأكيد اكتمال العمل';
+            btn.disabled = false;
+        }
+    } catch (err) {
+        showToast('❌ ' + err.message, 'error');
+        btn.textContent = '✅ تأكيد اكتمال العمل';
+        btn.disabled = false;
+    }
+}
+
+loadBookings();
+setInterval(loadBookings, 30000);
+</script>
+{% endblock %}

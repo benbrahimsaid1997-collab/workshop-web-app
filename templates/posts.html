@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="header">
+    <a href="/" class="back-btn">↩ رجوع</a>
+    <h1>📢 المنشورات</h1>
+    <button onclick="loadPosts()" style="background:rgba(255,255,255,0.2);border:none;color:white;
+        padding:7px 13px;border-radius:20px;cursor:pointer;font-size:14px;">🔄</button>
+</div>
+
+<div class="page-content">
+    <div id="content"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadPosts() {
+    const el = document.getElementById('content');
+    el.innerHTML = '<div class="state-box"><div class="icon">⏳</div>جاري التحميل...</div>';
+    try {
+        const data = await apiFetch('/Post');
+        if (!data || !data.length) {
+            el.innerHTML = '<div class="state-box"><div class="icon">📭</div>لا توجد منشورات حالياً</div>';
+            return;
+        }
+        el.innerHTML = data.map(p => {
+            const icon = p.Type === 'Video' ? '🎬' : p.Type === 'Image' ? '🖼️' : '📝';
+            const imgHtml = p.ImagePath
+                ? `<img src="${p.ImagePath}" alt="${p.Title || ''}"
+                       style="width:100%;border-radius:12px;margin:10px 0;display:block"
+                       onerror="this.style.display='none'">`
+                : '';
+            const videoHtml = p.VideoUrl
+                ? `<a href="${p.VideoUrl}" target="_blank" class="btn btn-danger btn-sm"
+                       style="margin-top:10px;display:inline-block;width:auto;padding:10px 20px;">
+                       🎥 تشغيل الفيديو
+                   </a>`
+                : '';
+            const textHtml = p.Text
+                ? `<p style="font-size:15px;color:#555;line-height:1.7;margin:8px 0">${p.Text}</p>`
+                : '';
+            return `<div class="card">
+                <div style="font-size:18px;font-weight:700;color:#1a1a2e;margin-bottom:8px">
+                    ${icon} ${p.Title || ''}
+                </div>
+                ${textHtml}${imgHtml}${videoHtml}
+            </div>`;
+        }).join('');
+    } catch (err) {
+        el.innerHTML = `<div class="state-box">
+            <div class="icon">❌</div>
+            ${err.message}
+        </div>`;
+    }
+}
+loadPosts();
+</script>
+{% endblock %}
