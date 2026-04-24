@@ -1,38 +1,42 @@
-{% extends 'base.html' %}
-{% block content %}
-<div style="padding: 36px 22px; display: flex; flex-direction: column; min-height: 100vh;">
-
-    <!-- Header with bell -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:36px;margin-top:16px">
-        <div style="text-align:center;flex:1">
-            <div style="font-size:62px;margin-bottom:10px">🔧</div>
-            <h1 style="font-size:28px;font-weight:800;color:#0e8fdb;margin-bottom:4px">ورشة السيارات</h1>
-            <p style="font-size:15px;color:#888">خدمات صيانة احترافية</p>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ورشة السيارات{% endblock %}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; }
+        .navbar { background: #2e7d32; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .navbar h1 { font-size: 1.5rem; }
+        .nav-links { display: flex; gap: 15px; flex-wrap: wrap; }
+        .nav-links a { color: white; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: background 0.3s; }
+        .nav-links a:hover { background: #1b5e20; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+        .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn { background: #2e7d32; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn:hover { background: #1b5e20; }
+        footer { text-align: center; padding: 20px; background: #333; color: white; margin-top: 40px; }
+        @media (max-width: 768px) { .navbar { flex-direction: column; gap: 10px; } .nav-links { justify-content: center; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>🔧 ورشة السيارات</h1>
+        <div class="nav-links">
+            <a href="/">الرئيسية</a>
+            <a href="/garages">المرايب</a>
+            <a href="/posts">المنشورات</a>
+            <a href="/products">المنتجات</a>
+            <a href="/booking">الحجز</a>
+            <a href="/my-notifications">🔔 الإشعارات</a>
         </div>
-        <a href="/my-notifications"
-           style="position:relative;text-decoration:none;background:white;width:46px;height:46px;
-                  border-radius:50%;display:flex;align-items:center;justify-content:center;
-                  box-shadow:0 2px 12px rgba(0,0,0,0.1);font-size:22px;flex-shrink:0;align-self:flex-start">
-            🔔
-            <span id="bell-badge"
-                  style="display:none;position:absolute;top:-2px;right:-2px;background:#e6293e;
-                         color:white;border-radius:50%;width:18px;height:18px;font-size:11px;
-                         font-weight:700;align-items:center;justify-content:center">0</span>
-        </a>
+    </nav>
+    <div class="container">
+        {% block content %}{% endblock %}
     </div>
-
-    <!-- Nav buttons -->
-    <div style="flex:1">
-        <a href="/garages"  class="btn btn-success">🏭 &nbsp; المرايب</a>
-        <a href="/posts"    class="btn btn-primary">📢 &nbsp; المنشورات</a>
-        <a href="/products" class="btn btn-orange">🛒 &nbsp; المنتجات</a>
-        <a href="/booking"  class="btn btn-purple">📅 &nbsp; حجز موعد</a>
-        <a href="/my-notifications" class="btn btn-teal">🔔 &nbsp; إشعاراتي</a>
-    </div>
-
-    <!-- Footer -->
-    <div style="text-align:center;padding:10px 0 0;color:#bbb;font-size:12px">
-        جميع الحقوق محفوظة © 2025
-    </div>
-</div>
-{% endblock %}
+    <footer>
+        <p>جميع الحقوق محفوظة © 2025 ورشة السيارات</p>
+    </footer>
+</body>
+</html>
