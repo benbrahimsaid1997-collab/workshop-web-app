@@ -3,21 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ورشة السيارات</title>
+    <title>{% block title %}ورشة السيارات{% endblock %}</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f0f0f0; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
-        button { background: #4CAF50; color: white; padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; }
+        .navbar { background: #2e7d32; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .navbar h1 { font-size: 1.5rem; }
+        .nav-links { display: flex; gap: 15px; flex-wrap: wrap; }
+        .nav-links a { color: white; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: background 0.3s; }
+        .nav-links a:hover { background: #1b5e20; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+        .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn { background: #2e7d32; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn:hover { background: #1b5e20; }
+        footer { text-align: center; padding: 20px; background: #333; color: white; margin-top: 40px; }
+        @media (max-width: 768px) { .navbar { flex-direction: column; gap: 10px; } .nav-links { justify-content: center; } }
     </style>
 </head>
 <body>
+    <nav class="navbar">
+        <h1>🔧 ورشة السيارات</h1>
+        <div class="nav-links">
+            <a href="/">الرئيسية</a>
+            <a href="/garages">المرايب</a>
+            <a href="/posts">المنشورات</a>
+            <a href="/products">المنتجات</a>
+            <a href="/booking">الحجز</a>
+            <a href="/my-notifications">🔔 الإشعارات</a>
+        </div>
+    </nav>
     <div class="container">
-        <h1>🚗 ورشة السيارات</h1>
-        <p>خدمات صيانة احترافية</p>
-        <button onclick="location.href='/garages'">🏗️ المرايب</button>
-        <button onclick="location.href='/posts'">📢 المنشورات</button>
-        <button onclick="location.href='/products'">📦 المنتجات</button>
-        <button onclick="location.href='/booking'">📅 الحجز</button>
+        {% block content %}{% endblock %}
     </div>
+    <footer>
+        <p>جميع الحقوق محفوظة © 2025 ورشة السيارات</p>
+    </footer>
 </body>
 </html>
