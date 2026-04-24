@@ -1,65 +1,24 @@
-<<<<<<< HEAD
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% block title %}المرايب{% endblock %}
 {% block content %}
-<div class="header">
-    <a href="/" class="back-btn">↩ رجوع</a>
-    <h1>🏭 المرايب</h1>
-    <button onclick="loadGarages()" style="background:rgba(255,255,255,0.2);border:none;color:white;
-        padding:7px 13px;border-radius:20px;cursor:pointer;font-size:14px;">🔄</button>
-</div>
-
-<div class="page-content">
-    <div id="content"></div>
-    <a href="/booking" class="btn btn-purple" style="margin-top: 6px;">📅 &nbsp; احجز موعدك الآن</a>
-</div>
-{% endblock %}
-
-{% block scripts %}
+<h2>🏗️ حالة المرايب</h2>
+<div id="garages-container">جاري التحميل...</div>
 <script>
-async function loadGarages() {
-    const el = document.getElementById('content');
-    el.innerHTML = '<div class="state-box"><div class="icon">⏳</div>جاري التحميل...</div>';
-    try {
-        const data = await apiFetch('/Garage/status');
-        if (!data || !data.length) {
-            el.innerHTML = '<div class="state-box"><div class="icon">🏭</div>لا توجد مرايب متاحة</div>';
-            return;
-        }
-        el.innerHTML = data.map(g => {
-            let badge, dot;
-            if (g.Status === 'Available') {
-                badge = '<span class="badge badge-success">🟢 شاغر</span>';
-            } else if (g.Status === 'Partial') {
-                badge = '<span class="badge badge-warning">🟡 جزئي</span>';
-            } else {
-                badge = '<span class="badge badge-danger">🔴 مشغول</span>';
-            }
-            const time = g.EstimatedMinutes === 0
-                ? '<strong style="color:#1abf66">متاح الآن</strong>'
-                : `<strong>${g.EstimatedMinutes} دقيقة</strong>`;
-            return `<div class="card">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-                    <div>
-                        <div style="font-size:17px;font-weight:700;color:#1a1a2e;margin-bottom:3px">${g.Name || ''}</div>
-                        <div style="font-size:13px;color:#888">${g.Description || ''}</div>
-                    </div>
-                    ${badge}
-                </div>
-                <div style="font-size:13px;color:#555;border-top:1px solid #f0f0f5;padding-top:9px">
-                    ⏱️ الوقت المتوقع: ${time}
-                </div>
-            </div>`;
-        }).join('');
-    } catch (err) {
-        el.innerHTML = `<div class="state-box">
-            <div class="icon">❌</div>
-            ${err.message}
-        </div>`;
-    }
-}
-loadGarages();
+fetch('/api/Garage/status')
+    .then(res => res.json())
+    .then(data => {
+        const container = document.getElementById('garages-container');
+        container.innerHTML = data.map(g => `
+            <div class="card">
+                <h3>${g.name}</h3>
+                <p>${g.description}</p>
+                <p>الحالة: ${g.status === 'Available' ? '🟢 شاغر' : g.status === 'Partial' ? '🟡 جزئي' : '🔴 مشغول'}</p>
+                <p>⏱️ الوقت المتوقع: ${g.estimatedMinutes} دقيقة</p>
+                <p>👥 في الانتظار: ${g.waitingCount || 0}</p>
+                <h4>الخدمات المتاحة:</h4>
+                <ul>${(g.services || []).map(s => `<li>${s.name} (${s.estimatedMinutes} دقيقة)</li>`).join('')}</ul>
+            </div>
+        `).join('');
+    });
 </script>
 {% endblock %}
-=======
-<h1>المرايب</h1><p>قريباً...</p><a href="/">رجوع</a>
->>>>>>> 621a94213e2fae885e9b249215a2d36d4d43be16
