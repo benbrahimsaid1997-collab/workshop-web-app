@@ -1,59 +1,21 @@
-<<<<<<< HEAD
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% block title %}المنتجات{% endblock %}
 {% block content %}
-<div class="header">
-    <a href="/" class="back-btn">↩ رجوع</a>
-    <h1>🛒 المنتجات</h1>
-    <button onclick="loadProducts()" style="background:rgba(255,255,255,0.2);border:none;color:white;
-        padding:7px 13px;border-radius:20px;cursor:pointer;font-size:14px;">🔄</button>
-</div>
-
-<div class="page-content">
-    <div id="content"></div>
-    <a href="/booking" class="btn btn-orange" style="margin-top:6px;">📅 &nbsp; احجز خدمة الآن</a>
-</div>
-{% endblock %}
-
-{% block scripts %}
+<h2>📦 المنتجات</h2>
+<div id="products-container">جاري التحميل...</div>
 <script>
-async function loadProducts() {
-    const el = document.getElementById('content');
-    el.innerHTML = '<div class="state-box"><div class="icon">⏳</div>جاري التحميل...</div>';
-    try {
-        const data = await apiFetch('/Product');
-        if (!data || !data.length) {
-            el.innerHTML = '<div class="state-box"><div class="icon">🛒</div>لا توجد منتجات متاحة</div>';
-            return;
-        }
-        el.innerHTML = data.map(p => {
-            const avail = p.IsAvailable
-                ? '<span style="font-size:13px;color:#1abf66;font-weight:600">✅ متوفر</span>'
-                : '<span style="font-size:13px;color:#e6293e;font-weight:600">❌ غير متوفر</span>';
-            const imgHtml = p.ImagePath
-                ? `<img src="${p.ImagePath}" alt="${p.Name || ''}"
-                       style="width:56px;height:56px;border-radius:12px;object-fit:cover"
-                       onerror="this.style.display='none'">`
-                : `<div style="width:56px;height:56px;border-radius:12px;background:#eef6ff;
-                               display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">🛢️</div>`;
-            return `<div class="card" style="display:flex;align-items:center;gap:14px;padding:15px 17px">
-                ${imgHtml}
-                <div style="flex:1">
-                    <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:3px">${p.Name || ''}</div>
-                    <div style="font-size:17px;font-weight:800;color:#1abf66;margin-bottom:3px">💰 ${p.Price || 0} دج</div>
-                    ${avail}
-                </div>
-            </div>`;
-        }).join('');
-    } catch (err) {
-        el.innerHTML = `<div class="state-box">
-            <div class="icon">❌</div>
-            ${err.message}
-        </div>`;
-    }
-}
-loadProducts();
+fetch('/api/Product')
+    .then(res => res.json())
+    .then(data => {
+        const container = document.getElementById('products-container');
+        container.innerHTML = data.map(p => `
+            <div class="card">
+                <h3>${p.name}</h3>
+                ${p.imagePath ? `<img src="${p.imagePath}" style="width:100px; height:100px; object-fit:cover; border-radius:10px;">` : ''}
+                <p>💰 السعر: ${p.price} دج</p>
+                <p>${p.isAvailable ? '✅ متوفر' : '❌ غير متوفر'}</p>
+            </div>
+        `).join('');
+    });
 </script>
 {% endblock %}
-=======
-<h1>المنتجات</h1><p>قريباً...</p><a href="/">رجوع</a>
->>>>>>> 621a94213e2fae885e9b249215a2d36d4d43be16
