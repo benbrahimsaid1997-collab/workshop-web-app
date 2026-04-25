@@ -1,42 +1,28 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}ورشة السيارات{% endblock %}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; }
-        .navbar { background: #2e7d32; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-        .navbar h1 { font-size: 1.5rem; }
-        .nav-links { display: flex; gap: 15px; flex-wrap: wrap; }
-        .nav-links a { color: white; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: background 0.3s; }
-        .nav-links a:hover { background: #1b5e20; }
-        .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
-        .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .btn { background: #2e7d32; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
-        .btn:hover { background: #1b5e20; }
-        footer { text-align: center; padding: 20px; background: #333; color: white; margin-top: 40px; }
-        @media (max-width: 768px) { .navbar { flex-direction: column; gap: 10px; } .nav-links { justify-content: center; } }
-    </style>
-</head>
-<body>
-    <nav class="navbar">
-        <h1>🔧 ورشة السيارات</h1>
-        <div class="nav-links">
-            <a href="/">الرئيسية</a>
-            <a href="/garages">المرايب</a>
-            <a href="/posts">المنشورات</a>
-            <a href="/products">المنتجات</a>
-            <a href="/booking">الحجز</a>
-            <a href="/my-notifications">🔔 الإشعارات</a>
-        </div>
-    </nav>
-    <div class="container">
-        {% block content %}{% endblock %}
-    </div>
-    <footer>
-        <p>جميع الحقوق محفوظة © 2025 ورشة السيارات</p>
-    </footer>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}الرئيسية{% endblock %}
+{% block content %}
+<div class="card" style="text-align: center;">
+    <h2>🚗 مرحباً بكم في ورشة السيارات</h2>
+    <p>نقدم لكم أفضل خدمات الصيانة والإصلاح بأسعار تنافسية</p>
+    <p>خدماتنا تشمل: الميكانيك العام، تغيير الزيت، تصليح المفاصل، فحص كمبيوتر، وغيرها</p>
+    <a href="/booking" class="btn" style="display: inline-block; margin-top: 15px;">احجز موعداً الآن</a>
+</div>
+<div class="card">
+    <h3>📊 إحصائيات سريعة</h3>
+    <div id="stats">جاري التحميل...</div>
+</div>
+<script>
+fetch('/api/Garage/status')
+    .then(res => res.json())
+    .then(data => {
+        const available = data.filter(g => g.status === 'Available').length;
+        const partial = data.filter(g => g.status === 'Partial').length;
+        const busy = data.filter(g => g.status === 'Busy').length;
+        document.getElementById('stats').innerHTML = `
+            <p>🟢 مرايب شاغرة: ${available}</p>
+            <p>🟡 مرايب جزئية: ${partial}</p>
+            <p>🔴 مرايب مشغولة: ${busy}</p>
+        `;
+    });
+</script>
+{% endblock %}
